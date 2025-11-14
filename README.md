@@ -172,6 +172,47 @@ Exploratory investigation into geometric bivector algebra patterns across physic
 
 ---
 
+## Active Sprints & Extensions
+
+### 🚀 RL Patent Validation (NEW!)
+**[SPRINT_RL_VALIDATION.md](SPRINT_RL_VALIDATION.md)** - 5-day validation plan
+
+**Hypothesis**: Λ measures distribution distinguishability in stochastic RL
+
+**Key Files**:
+- `PATENT_RL_STOCHASTIC.md` - Full patent documentation
+- `distribution_bivector_utils.py` - Distribution to bivector mapping
+- `reddit_3door_problem.py` - Multi-armed bandit test case
+- `lambda_ppo_starter.py` - PPO with Lambda weighting
+
+**Claims to Validate**:
+1. Λ correlates with KL divergence (R² > 0.8)
+2. Lambda-Bandit converges faster than UCB1
+3. Scaling advantages for many-armed problems
+4. Lambda-PPO improves sample efficiency
+5. Real-world application: Portfolio optimization
+
+**Status**: Ready for Claude Code Web execution
+
+### 🌊 Phase Coherence Extension (NEW!)
+**[PHASE_COHERENCE_EXTENSION.md](PHASE_COHERENCE_EXTENSION.md)** - Schubert et al. bridge
+
+**Hypothesis**: Λ measures phase decoherence!
+
+**Key Predictions**:
+1. Λ ∝ -log(r) where r = Kuramoto order parameter
+2. PLV = exp(-Λ²) where PLV = Phase Locking Value
+3. exp(-Λ²) emerges at critical transitions
+
+**Implementation**:
+- `phase_coherence_starter.py` - Kuramoto model + Lambda testing
+
+**Why Exciting**: Could explain WHY exp(-Λ²) is universal across all systems!
+
+**Status**: Starter code ready, awaiting validation
+
+---
+
 ## Future Work
 
 ### High Priority (BCH Materials)
@@ -180,7 +221,14 @@ Exploratory investigation into geometric bivector algebra patterns across physic
 - Engineering software development
 - Publication in Physical Review B
 
+### High Priority (RL Patent)
+- Execute 5-day validation sprint
+- Reddit 3-door problem benchmark
+- Portfolio optimization test
+- Patent filing upon validation
+
 ### Medium Priority (Theoretical)
+- Phase coherence tests (Kuramoto-Lambda correlation)
 - Systematic bivector survey (all Cl(3,1) pairs)
 - Higher Clifford algebras (Cl(p,q))
 - Geometric phase connection
@@ -302,10 +350,11 @@ Unpublished exploratory research. Available at: [repository]
 ## Files at a Glance
 
 ```
-hierarchy_test/
+bivector-framework/
 │
 ├── README.md (this file)
 ├── COMPREHENSIVE_SUMMARY.md ⭐ START HERE
+├── SPRINT.md (5-day physics exploration)
 │
 ├── Documentation (chronological)
 │   ├── BIVECTOR_FINDINGS.md (original breakthrough)
@@ -326,10 +375,21 @@ hierarchy_test/
 │   ├── test_against_codata.py (precision tests)
 │   └── kk_loop_calculation.py (5D FALSIFIED)
 │
-└── Predictions
-    ├── tau_g2_prediction.py (phenomenological)
-    ├── kaluza_klein_observables.py (invalidated)
-    └── test_higher_dimensions.py (Cl(3,2), Cl(4,1))
+├── Predictions
+│   ├── tau_g2_prediction.py (phenomenological)
+│   ├── kaluza_klein_observables.py (invalidated)
+│   └── test_higher_dimensions.py (Cl(3,2), Cl(4,1))
+│
+├── Phase Coherence Extension 🌊 (NEW!)
+│   ├── PHASE_COHERENCE_EXTENSION.md (Schubert bridge)
+│   └── phase_coherence_starter.py (Kuramoto-Lambda tests)
+│
+└── RL Patent Validation 🚀 (NEW!)
+    ├── PATENT_RL_STOCHASTIC.md (full patent docs)
+    ├── SPRINT_RL_VALIDATION.md (5-day plan)
+    ├── distribution_bivector_utils.py (core utilities)
+    ├── reddit_3door_problem.py (bandit benchmark)
+    └── lambda_ppo_starter.py (PPO implementation)
 ```
 
 ---
