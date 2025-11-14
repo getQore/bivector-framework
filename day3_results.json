@@ -1,0 +1,150 @@
+{
+  "cooper": {
+    "Lambda_values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "coherence_lengths": [
+      0.011511379672222046,
+      0.011497592207840657,
+      0.011454823582715337,
+      0.010296605776438863,
+      0.008140181605598327
+    ],
+    "B_fields_mT": [
+      0.1,
+      0.5,
+      1.0,
+      5.0,
+      10.0
+    ],
+    "R_squared_values": {
+      "exp(-\u039b\u00b2)": -999,
+      "GL theory": 1.0,
+      "exp(-B)": -8.7290212315728
+    },
+    "symmetry": "SO(3,1) in k-space",
+    "symmetry_classification": {}
+  },
+  "weyl": {
+    "Lambda_values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "anomaly_rates": [
+      1.1692174673746595e+35,
+      1.1680999375755747e+35,
+      1.165802503102599e+35,
+      1.1623321299854983e+35,
+      1.1576993233349347e+35
+    ],
+    "k_positions": [
+      0.01,
+      0.0325,
+      0.05500000000000001,
+      0.0775,
+      0.1
+    ],
+    "R_squared_values": {
+      "exp(-\u039b\u00b2)": -999,
+      "exp(-k\u00b2)": 1.0,
+      "Constant": -1.1986591497697265
+    },
+    "symmetry": "Lorentz-like + spinor",
+    "symmetry_classification": {}
+  },
+  "tunneling": {
+    "Lambda_values": [
+      1.0313798792850732,
+      1.54706981892761,
+      2.2478403331024066,
+      3.6098295774977562,
+      5.131050113865951
+    ],
+    "transmission_probs": [
+      0.0015332725539875121,
+      6.0038390693321746e-05,
+      7.34851533162518e-07,
+      1.4114573711881652e-10,
+      9.968575638924907e-15
+    ],
+    "barrier_heights_eV": [
+      0.5,
+      1.0,
+      2.0,
+      5.0,
+      10.0
+    ],
+    "R_squared_values": {
+      "exp(-\u039b\u00b2)": -68485.30012612966,
+      "exp(-2\u03c0\u039b) WKB": 1.0,
+      "exp(-\u039b)": -99235.75456485857
+    },
+    "symmetry": "Phase-space geometric",
+    "symmetry_classification": {}
+  },
+  "berry": {
+    "Lambda_values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "berry_phases": [
+      0.0,
+      0.92015118451061,
+      3.1415926535897927,
+      5.363034122668976,
+      6.283185307179586
+    ],
+    "theta_values": [
+      0.0,
+      0.7853981633974483,
+      1.5707963267948966,
+      2.356194490192345,
+      3.141592653589793
+    ],
+    "R_squared_values": {
+      "exp(-\u039b\u00b2)": -999,
+      "\u03a9 (solid angle)": 1.0
+    },
+    "symmetry": "U(1) gauge",
+    "symmetry_classification": {}
+  },
+  "skyrmion": {
+    "Lambda_values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "topological_charges": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "radii_nm": [
+      1,
+      2,
+      5,
+      10,
+      20
+    ],
+    "R_squared_values": {
+      "exp(-\u039b\u00b2)": -999,
+      "Constant Q": 0.0
+    },
+    "symmetry": "SU(2) spin",
+    "symmetry_classification": {}
+  }
+}
