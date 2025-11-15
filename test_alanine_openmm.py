@@ -19,6 +19,7 @@ try:
     from openmm.app import *
     from openmm import *
     from openmm.unit import *
+    from openmm.app import Modeller  # Explicit import for clarity
     OPENMM_AVAILABLE = True
 except ImportError:
     OPENMM_AVAILABLE = False
@@ -126,11 +127,17 @@ def run_alanine_md_test():
     # Load structure
     pdb = PDBFile(pdb_file)
 
-    # Use implicit solvent force field
+    # Use Modeller to add missing hydrogens (FIX for template error)
     forcefield = ForceField('amber14-all.xml', 'implicit/gbn2.xml')
 
-    # Create system
-    system = forcefield.createSystem(pdb.topology,
+    print("  Adding missing hydrogens with Modeller...")
+    modeller = Modeller(pdb.topology, pdb.positions)
+    modeller.addHydrogens(forcefield)
+    print(f"  Atoms after adding H: {modeller.topology.getNumAtoms()}")
+    print()
+
+    # Create system with complete topology
+    system = forcefield.createSystem(modeller.topology,
                                       nonbondedMethod=NoCutoff,
                                       constraints=HBonds)
 
@@ -143,10 +150,10 @@ def run_alanine_md_test():
 
     # Simulation
     platform = Platform.getPlatformByName('CPU')
-    simulation = Simulation(pdb.topology, system, integrator, platform)
-    simulation.context.setPositions(pdb.positions)
+    simulation = Simulation(modeller.topology, system, integrator, platform)
+    simulation.context.setPositions(modeller.positions)
 
-    print(f"  Atoms: {pdb.topology.getNumAtoms()}")
+    print(f"  Total atoms: {modeller.topology.getNumAtoms()}")
     print()
 
     # Minimize
