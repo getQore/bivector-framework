@@ -50,8 +50,10 @@ class LambdaAdaptiveVerletIntegrator:
         EMA smoothing parameter (lower = smoother dt changes)
     dt_min_factor : float, default=0.25
         Minimum timestep as fraction of dt_base
-    torsion_atoms : tuple of 4 ints, required
-        Atom indices (i, j, k, l) defining the torsion to monitor
+    torsion_atoms : tuple of 4 ints OR list of tuples, required
+        Single torsion: (i, j, k, l) defining the torsion to monitor
+        Multiple torsions: [(i1,j1,k1,l1), (i2,j2,k2,l2), ...]
+        For multiple torsions, Λ_global = max(Λ_i) across all torsions
     torsion_force_group : int, default=1
         Force group containing torsion forces
 
@@ -111,9 +113,24 @@ class LambdaAdaptiveVerletIntegrator:
         torsion_force_group=1
     ):
         if torsion_atoms is None:
-            raise ValueError("torsion_atoms must be specified as (i, j, k, l)")
-        if len(torsion_atoms) != 4:
-            raise ValueError("torsion_atoms must be a tuple of 4 atom indices")
+            raise ValueError("torsion_atoms must be specified")
+
+        # Handle both single and multi-torsion inputs
+        if isinstance(torsion_atoms[0], (list, tuple)):
+            # Multi-torsion: list of tuples
+            self.torsion_atoms_list = [tuple(ta) for ta in torsion_atoms]
+            self.multi_torsion = True
+        else:
+            # Single torsion: one tuple
+            if len(torsion_atoms) != 4:
+                raise ValueError("Single torsion_atoms must be a tuple of 4 atom indices")
+            self.torsion_atoms_list = [tuple(torsion_atoms)]
+            self.multi_torsion = False
+
+        # Validate all torsions
+        for ta in self.torsion_atoms_list:
+            if len(ta) != 4:
+                raise ValueError(f"Each torsion must have 4 atoms, got {len(ta)}")
 
         self.context = context
         self.integrator = context.getIntegrator()
@@ -130,8 +147,10 @@ class LambdaAdaptiveVerletIntegrator:
         self.max_change_fraction = 0.1  # Max 10% change per step
 
         # Torsion monitoring
-        self.torsion_atoms = tuple(torsion_atoms)
         self.torsion_force_group = torsion_force_group
+
+        # Multi-torsion tracking
+        self.Lambda_per_torsion = np.zeros(len(self.torsion_atoms_list))
 
         # State tracking
         self.Lambda_smooth = 0.0
@@ -179,8 +198,15 @@ class LambdaAdaptiveVerletIntegrator:
                 kilocalories_per_mole/angstroms
             )
 
-            # 2) Compute Λ_stiff for monitored torsion
-            Lambda_current = self._compute_Lambda_stiff(pos, vel, F_torsion)
+            # 2) Compute Λ_stiff for all monitored torsions
+            for idx, torsion_atoms in enumerate(self.torsion_atoms_list):
+                Lambda_i = self._compute_Lambda_stiff_single(
+                    pos, vel, F_torsion, torsion_atoms
+                )
+                self.Lambda_per_torsion[idx] = Lambda_i
+
+            # Use max aggregation for global stiffness
+            Lambda_current = np.max(self.Lambda_per_torsion)
 
             # 3) Update smoothed Lambda (EMA)
             self.Lambda_smooth = (
@@ -213,9 +239,9 @@ class LambdaAdaptiveVerletIntegrator:
             self.time_ps += self.dt_current_fs / 1000.0
             self.n_steps += 1
 
-    def _compute_Lambda_stiff(self, positions, velocities, forces_torsion):
+    def _compute_Lambda_stiff_single(self, positions, velocities, forces_torsion, torsion_atoms):
         """
-        Compute Λ_stiff = |φ̇ · Q_φ| for the monitored torsion.
+        Compute Λ_stiff = |φ̇ · Q_φ| for a single torsion.
 
         Parameters
         ----------
@@ -225,13 +251,15 @@ class LambdaAdaptiveVerletIntegrator:
             All atom velocities (Å/ps)
         forces_torsion : numpy.ndarray
             Torsion forces on all atoms (kcal/mol/Å)
+        torsion_atoms : tuple of 4 ints
+            Atom indices (i, j, k, l) for this torsion
 
         Returns
         -------
         Lambda_stiff : float
             Stiffness parameter (non-negative)
         """
-        i, j, k, l = self.torsion_atoms
+        i, j, k, l = torsion_atoms
 
         # Extract positions/velocities/forces for torsion atoms
         r_a, r_b, r_c, r_d = positions[[i, j, k, l]]
@@ -278,7 +306,7 @@ class LambdaAdaptiveVerletIntegrator:
 
     def get_Lambda(self):
         """
-        Get current smoothed Λ_stiff value.
+        Get current smoothed Λ_stiff value (global maximum).
 
         Returns
         -------
@@ -286,6 +314,17 @@ class LambdaAdaptiveVerletIntegrator:
             Smoothed stiffness parameter
         """
         return self.Lambda_smooth
+
+    def get_Lambda_per_torsion(self):
+        """
+        Get current Λ_stiff for each monitored torsion.
+
+        Returns
+        -------
+        Lambda_per_torsion : numpy.ndarray
+            Array of Λ_stiff values for each torsion
+        """
+        return self.Lambda_per_torsion.copy()
 
     def get_stats(self):
         """
@@ -298,25 +337,34 @@ class LambdaAdaptiveVerletIntegrator:
             - 'n_steps': total steps taken
             - 'time_ps': total time elapsed (ps)
             - 'dt_current_fs': current timestep (fs)
-            - 'Lambda_smooth': current smoothed Λ_stiff
+            - 'Lambda_smooth': current smoothed Λ_stiff (global)
+            - 'Lambda_per_torsion': array of Λ_stiff for each torsion
             - 'dt_base_fs': base timestep (fs)
             - 'k': adaptation parameter
+            - 'n_torsions': number of monitored torsions
         """
         return {
             'n_steps': self.n_steps,
             'time_ps': self.time_ps,
             'dt_current_fs': self.dt_current_fs,
             'Lambda_smooth': self.Lambda_smooth,
+            'Lambda_per_torsion': self.Lambda_per_torsion.copy(),
             'dt_base_fs': self.dt_base_fs,
             'k': self.k,
+            'n_torsions': len(self.torsion_atoms_list),
         }
 
     def __repr__(self):
+        if self.multi_torsion:
+            torsion_str = f"{len(self.torsion_atoms_list)} torsions"
+        else:
+            torsion_str = f"torsion={self.torsion_atoms_list[0]}"
+
         return (
             f"LambdaAdaptiveVerletIntegrator("
             f"dt_base={self.dt_base_fs:.3f} fs, "
             f"k={self.k:.4f}, "
-            f"torsion={self.torsion_atoms})"
+            f"{torsion_str})"
         )
 
 
