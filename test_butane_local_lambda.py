@@ -140,19 +140,105 @@ def torsion_torque_about_bond(positions, forces, i1, i2, i3, i4):
 # ---------------------------------------------------------------------
 
 def build_butane_system():
-    """Build butane system with OpenMM"""
+    """Build butane system with OpenMM using direct force definitions"""
     if not OPENMM_AVAILABLE:
         raise ImportError("OpenMM required for MD simulation")
 
-    pdb = app.PDBFile(PDB_PATH)
-    ff = app.ForceField(*FORCEFIELD_FILES)
+    # Create system
+    system = openmm.System()
 
-    system = ff.createSystem(
-        pdb.topology,
-        nonbondedMethod=app.NoCutoff,
-        constraints=None,
-        removeCMMotion=True,
-    )
+    # Add atoms (masses in amu)
+    # 4 carbons + 10 hydrogens
+    atom_masses = [
+        12.01,  # C1 (0)
+        1.008, 1.008, 1.008,  # H11, H12, H13 (1-3)
+        12.01,  # C2 (4)
+        1.008,  # H21 (5)
+        12.01,  # C3 (6)
+        1.008, 1.008,  # H31, H32 (7-8)
+        1.008,  # H22 (9)
+        12.01,  # C4 (10)
+        1.008, 1.008, 1.008   # H41, H42, H43 (11-13)
+    ]
+
+    for mass in atom_masses:
+        system.addParticle(mass * unit.amu)
+
+    # Add harmonic bonds (k in kJ/mol/nm^2, r0 in nm)
+    bond_force = openmm.HarmonicBondForce()
+    bonds = [
+        (0, 1, 340000, 0.109),  # C1-H11
+        (0, 2, 340000, 0.109),  # C1-H12
+        (0, 3, 340000, 0.109),  # C1-H13
+        (0, 4, 260000, 0.154),  # C1-C2
+        (4, 5, 340000, 0.109),  # C2-H21
+        (4, 6, 260000, 0.154),  # C2-C3
+        (4, 9, 340000, 0.109),  # C2-H22
+        (6, 7, 340000, 0.109),  # C3-H31
+        (6, 8, 340000, 0.109),  # C3-H32
+        (6, 10, 260000, 0.154), # C3-C4
+        (10, 11, 340000, 0.109),# C4-H41
+        (10, 12, 340000, 0.109),# C4-H42
+        (10, 13, 340000, 0.109),# C4-H43
+    ]
+    for i, j, k, r0 in bonds:
+        bond_force.addBond(i, j, r0 * unit.nanometer, k * unit.kilojoule_per_mole / (unit.nanometer**2))
+    system.addForce(bond_force)
+
+    # Add harmonic angles (k in kJ/mol/rad^2, theta0 in radians)
+    angle_force = openmm.HarmonicAngleForce()
+    angles = [
+        # C-C-C backbone
+        (0, 4, 6, 520, np.radians(112.7)),
+        (4, 6, 10, 520, np.radians(112.7)),
+        # H-C-C
+        (1, 0, 4, 330, np.radians(110.7)),
+        (2, 0, 4, 330, np.radians(110.7)),
+        (3, 0, 4, 330, np.radians(110.7)),
+        (5, 4, 6, 330, np.radians(110.7)),
+        (9, 4, 6, 330, np.radians(110.7)),
+        (7, 6, 10, 330, np.radians(110.7)),
+        (8, 6, 10, 330, np.radians(110.7)),
+        # H-C-H
+        (1, 0, 2, 280, np.radians(107.8)),
+        (1, 0, 3, 280, np.radians(107.8)),
+        (2, 0, 3, 280, np.radians(107.8)),
+        (7, 6, 8, 280, np.radians(107.8)),
+        (11, 10, 12, 280, np.radians(107.8)),
+        (11, 10, 13, 280, np.radians(107.8)),
+        (12, 10, 13, 280, np.radians(107.8)),
+    ]
+    for i, j, k, kforce, theta0 in angles:
+        angle_force.addAngle(i, j, k, theta0 * unit.radian, kforce * unit.kilojoule_per_mole / (unit.radian**2))
+    system.addForce(angle_force)
+
+    # Add torsional potential (OPLS-style)
+    # V(phi) = sum_n [k_n/2 * (1 + cos(n*phi - phi0))]
+    torsion_force = openmm.PeriodicTorsionForce()
+    # C-C-C-C dihedral (0-4-6-10)
+    # OPLS parameters for alkane C-C-C-C
+    torsion_force.addTorsion(0, 4, 6, 10, 3, 0.0, 5.4 * unit.kilojoule_per_mole)  # cos(3phi)
+    torsion_force.addTorsion(0, 4, 6, 10, 2, np.pi, 1.3 * unit.kilojoule_per_mole)  # -cos(2phi)
+    torsion_force.addTorsion(0, 4, 6, 10, 1, 0.0, 2.5 * unit.kilojoule_per_mole)  # cos(phi)
+    system.addForce(torsion_force)
+
+    # Initial positions (all-trans configuration)
+    positions = [
+        [0.0, 0.0, 0.0],      # C1 (0)
+        [-0.06, 0.08, 0.0],   # H11 (1)
+        [-0.06, -0.04, -0.08],# H12 (2)
+        [-0.06, -0.04, 0.08], # H13 (3)
+        [0.154, 0.0, 0.0],    # C2 (4)
+        [0.19, 0.103, 0.0],   # H21 (5)
+        [0.208, -0.077, 0.12],# C3 (6)
+        [0.172, -0.18, 0.12], # H31 (7)
+        [0.19, -0.04, 0.22],  # H32 (8)
+        [0.19, -0.054, -0.09],# H22 (9)
+        [0.362, -0.077, 0.12],# C4 (10)
+        [0.40, -0.131, 0.207],# H41 (11)
+        [0.40, -0.131, 0.033],# H42 (12)
+        [0.40, 0.026, 0.12],  # H43 (13)
+    ]
 
     # Simple Langevin dynamics
     integrator = openmm.LangevinIntegrator(
@@ -162,12 +248,12 @@ def build_butane_system():
     )
 
     platform = openmm.Platform.getPlatformByName("CPU")
-    simulation = app.Simulation(pdb.topology, system, integrator, platform)
-    simulation.context.setPositions(pdb.positions)
+    simulation = app.Simulation(app.Topology(), system, integrator, platform)
+    simulation.context.setPositions([p * unit.nanometer for p in positions])
 
     # quick minimization to relax bad contacts
     print("Minimizing energy...")
-    app.LocalEnergyMinimizer.minimize(simulation.context, tolerance=10.0, maxIterations=500)
+    openmm.LocalEnergyMinimizer.minimize(simulation.context, tolerance=10.0, maxIterations=500)
 
     # initialize velocities
     simulation.context.setVelocitiesToTemperature(TEMPERATURE * unit.kelvin)
