@@ -22,6 +22,11 @@ Rick Mathews - November 2024
 import numpy as np
 from scipy.spatial.transform import Rotation
 from scipy.signal import find_peaks
+try:
+    import networkx as nx
+    HAS_NETWORKX = True
+except ImportError:
+    HAS_NETWORKX = False
 
 
 # ============================================================================
@@ -487,6 +492,33 @@ def compute_torsional_strain_butane(phi_degrees):
     return abs(dVdphi)
 
 
+def compute_torsional_curvature_butane(phi_degrees):
+    """
+    Compute butane torsional curvature |d²V/dφ²| (OPLS force field).
+
+    This measures local stiffness of the potential.
+
+    Args:
+        phi_degrees: Dihedral angle (degrees)
+
+    Returns:
+        curvature: |d²V/dφ²| (kJ/mol/radian²)
+    """
+    phi_rad = np.radians(phi_degrees)
+
+    # OPLS parameters
+    V1 = 3.4
+    V2 = -0.8
+    V3 = 6.8
+
+    # Second derivative
+    d2Vdphi2 = -V1 * np.cos(phi_rad) - \
+                2*V2 * np.cos(2*phi_rad) - \
+                3*V3 * np.cos(3*phi_rad)
+
+    return abs(d2Vdphi2)
+
+
 # ============================================================================
 # THERMAL SAMPLING
 # ============================================================================
@@ -551,6 +583,452 @@ def has_steric_clash(coords, threshold=1.0):
                 return True
 
     return False
+
+
+# ============================================================================
+# GEOMETRIC ALGEBRA TORSION DIAGNOSTIC (Patent-Grade)
+# ============================================================================
+
+def compute_dihedral_gradient(r_a, r_b, r_c, r_d):
+    """
+    Compute gradient of dihedral angle φ(a-b-c-d) with respect to atom positions.
+
+    Returns ∂φ/∂r_a, ∂φ/∂r_b, ∂φ/∂r_c, ∂φ/∂r_d (4 vectors of length 3).
+
+    Reference: Blondel & Karplus, J. Comput. Chem. 1996
+
+    Args:
+        r_a, r_b, r_c, r_d: 3D position vectors of atoms a, b, c, d
+
+    Returns:
+        (g_a, g_b, g_c, g_d): Gradient vectors
+    """
+    r_a = np.array(r_a)
+    r_b = np.array(r_b)
+    r_c = np.array(r_c)
+    r_d = np.array(r_d)
+
+    # Bond vectors
+    b1 = r_b - r_a
+    b2 = r_c - r_b
+    b3 = r_d - r_c
+
+    # Normal vectors to planes
+    n1 = np.cross(b1, b2)
+    n2 = np.cross(b2, b3)
+
+    # Normalize
+    n1_norm = np.linalg.norm(n1)
+    n2_norm = np.linalg.norm(n2)
+
+    if n1_norm < 1e-10 or n2_norm < 1e-10:
+        # Degenerate geometry (linear)
+        return np.zeros(3), np.zeros(3), np.zeros(3), np.zeros(3)
+
+    n1_hat = n1 / n1_norm
+    n2_hat = n2 / n2_norm
+
+    b2_norm = np.linalg.norm(b2)
+
+    # Gradient components (analytical derivatives)
+    g_a = -b2_norm / n1_norm**2 * n1
+    g_d = b2_norm / n2_norm**2 * n2
+
+    # Intermediate terms
+    term_b = np.dot(b1, b2) / b2_norm**2
+    term_c = np.dot(b3, b2) / b2_norm**2
+
+    g_b = (term_b - 1) * g_a - term_c * g_d
+    g_c = (term_c - 1) * g_d - term_b * g_a
+
+    return g_a, g_b, g_c, g_d
+
+
+def compute_Q_phi(r_a, r_b, r_c, r_d, F_a, F_b, F_c, F_d):
+    """
+    Compute generalized torsional force Q_φ = ∂V/∂φ.
+
+    Q_φ = sum_i F_i · ∂r_i/∂φ = (F·g) / |g|²
+
+    where g = ∂φ/∂r is the dihedral gradient.
+
+    Args:
+        r_a, r_b, r_c, r_d: Atom positions (3D vectors)
+        F_a, F_b, F_c, F_d: Forces on atoms (3D vectors)
+
+    Returns:
+        Q_phi: Generalized torsional force (kJ/mol/rad)
+    """
+    g_a, g_b, g_c, g_d = compute_dihedral_gradient(r_a, r_b, r_c, r_d)
+
+    # Project forces onto gradient
+    F_dot_g = (np.dot(F_a, g_a) + np.dot(F_b, g_b) +
+               np.dot(F_c, g_c) + np.dot(F_d, g_d))
+
+    # Normalize by gradient magnitude squared
+    g_sq = (np.dot(g_a, g_a) + np.dot(g_b, g_b) +
+            np.dot(g_c, g_c) + np.dot(g_d, g_d))
+
+    if g_sq < 1e-10:
+        return 0.0
+
+    Q_phi = F_dot_g / g_sq
+    return Q_phi
+
+
+def compute_phi_dot(r_a, r_b, r_c, r_d, v_a, v_b, v_c, v_d):
+    """
+    Compute time derivative of dihedral angle: dφ/dt = g · v.
+
+    Args:
+        r_a, r_b, r_c, r_d: Atom positions
+        v_a, v_b, v_c, v_d: Atom velocities
+
+    Returns:
+        phi_dot: dφ/dt (rad/s or rad/ps depending on velocity units)
+    """
+    g_a, g_b, g_c, g_d = compute_dihedral_gradient(r_a, r_b, r_c, r_d)
+
+    phi_dot = (np.dot(v_a, g_a) + np.dot(v_b, g_b) +
+               np.dot(v_c, g_c) + np.dot(v_d, g_d))
+
+    return phi_dot
+
+
+def identify_torsion_groups(bond_indices, all_bonds):
+    """
+    Identify left and right atom groups for a torsion bond.
+
+    Split molecule at bond (b, c), find connected components.
+
+    Args:
+        bond_indices: (b_idx, c_idx) - indices of central bond
+        all_bonds: List of (i, j) tuples for all bonds in molecule
+
+    Returns:
+        (group_L, group_R): Lists of atom indices in left and right groups
+    """
+    if not HAS_NETWORKX:
+        raise ImportError("networkx required for group identification. Install with: pip install networkx")
+
+    b_idx, c_idx = bond_indices
+
+    # Build molecular graph
+    G = nx.Graph()
+    G.add_edges_from(all_bonds)
+
+    # Remove the torsion bond
+    if G.has_edge(b_idx, c_idx):
+        G.remove_edge(b_idx, c_idx)
+
+    # Find connected components
+    components = list(nx.connected_components(G))
+
+    # Identify which component contains b and which contains c
+    group_L = None
+    group_R = None
+
+    for comp in components:
+        if b_idx in comp:
+            group_L = sorted(comp)
+        if c_idx in comp:
+            group_R = sorted(comp)
+
+    if group_L is None or group_R is None:
+        raise ValueError(f"Could not split molecule at bond {bond_indices}")
+
+    return group_L, group_R
+
+
+def identify_torsion_groups_simple(torsion_atoms, n_atoms):
+    """
+    Simple group identification for small molecules.
+
+    For a torsion (a, b, c, d):
+    - Left group: atoms 0 to b (inclusive)
+    - Right group: atoms c to n_atoms-1 (inclusive)
+
+    This works for linear/branched chains but not rings.
+
+    Args:
+        torsion_atoms: (a, b, c, d) - torsion atom indices
+        n_atoms: Total number of atoms
+
+    Returns:
+        (group_L, group_R): Lists of atom indices
+    """
+    a, b, c, d = torsion_atoms
+
+    # Simple partition: atoms on left vs right of central bond
+    group_L = list(range(0, b + 1))
+    group_R = list(range(c, n_atoms))
+
+    return group_L, group_R
+
+
+def compute_I_red(positions, masses, u, group_L, group_R, r_pivot):
+    """
+    Compute reduced moment of inertia for two-body rotation.
+
+    I_red = (I_L * I_R) / (I_L + I_R)
+
+    where I_G = sum_{i in G} m_i * d_i², d_i = distance from axis.
+
+    Args:
+        positions: Nx3 array of atom positions
+        masses: N-array of atom masses
+        u: 3D unit vector for rotation axis
+        group_L, group_R: Lists of atom indices in each group
+        r_pivot: Point on rotation axis (e.g., position of atom b)
+
+    Returns:
+        I_red: Reduced moment of inertia (mass * length²)
+    """
+    def moment_group(group):
+        I_g = 0.0
+        for idx in group:
+            # Vector from pivot to atom
+            r_vec = positions[idx] - r_pivot
+            # Distance to axis: |r - (r·u)u|
+            r_parallel = np.dot(r_vec, u) * u
+            r_perp = r_vec - r_parallel
+            d_sq = np.dot(r_perp, r_perp)
+            I_g += masses[idx] * d_sq
+        return I_g
+
+    I_L = moment_group(group_L)
+    I_R = moment_group(group_R)
+
+    # Reduced inertia (avoid division by zero)
+    if I_L + I_R < 1e-10:
+        return 1e-10
+
+    I_red = (I_L * I_R) / (I_L + I_R)
+    return I_red
+
+
+def fit_omega_rigid_body(positions, velocities, masses, group):
+    """
+    Fit angular velocity ω for a group of atoms (rigid-body approximation).
+
+    Solve: ω = I^(-1) * L
+
+    where:
+    - L = sum m_i (r_i' × v_i) (angular momentum)
+    - I = sum m_i (|r_i'|² Id - r_i' ⊗ r_i'^T) (inertia tensor)
+    - r_i' = r_i - COM
+
+    Args:
+        positions: Nx3 array
+        velocities: Nx3 array
+        masses: N-array
+        group: List of atom indices
+
+    Returns:
+        omega: 3D angular velocity vector (rad/s or rad/ps)
+    """
+    if len(group) == 0:
+        return np.zeros(3)
+
+    # Compute center of mass
+    M_g = np.sum([masses[idx] for idx in group])
+    com_g = np.sum([masses[idx] * positions[idx] for idx in group], axis=0) / M_g
+
+    # Angular momentum and inertia tensor
+    L_g = np.zeros(3)
+    I_g = np.zeros((3, 3))
+
+    for idx in group:
+        r_prime = positions[idx] - com_g
+        v = velocities[idx]
+
+        # Angular momentum contribution
+        L_g += masses[idx] * np.cross(r_prime, v)
+
+        # Inertia tensor contribution
+        r_sq = np.dot(r_prime, r_prime)
+        outer = np.outer(r_prime, r_prime)
+        I_g += masses[idx] * (r_sq * np.eye(3) - outer)
+
+    # Solve I * omega = L
+    try:
+        # Add small regularization for numerical stability
+        I_g_reg = I_g + 1e-10 * np.eye(3)
+        omega_g = np.linalg.solve(I_g_reg, L_g)
+    except np.linalg.LinAlgError:
+        omega_g = np.zeros(3)
+
+    return omega_g
+
+
+def compute_Lambda_GA(positions, velocities, forces, masses,
+                      torsion_atoms, all_bonds=None):
+    """
+    Compute GA-based torsion diagnostic: Λ = ||[B_ω, B_Q]||.
+
+    **Patent-Grade Formulation:**
+
+    1. Nominal torsion axis: u = (r_c - r_b) / |r_c - r_b|
+    2. Generalized force: Q_φ = (F · g) / |g|²
+    3. Reduced inertia: I_red = (I_L * I_R) / (I_L + I_R)
+    4. Angular acceleration bivector: B_Q = (Q_φ / I_red) * u
+    5. Group angular velocities: ω_L, ω_R from rigid-body fit
+    6. Velocity bivector: B_ω = ω_L - ω_R
+    7. Commutator: Λ = 2 |ω_rel × (α u)|, where α = Q_φ / I_red
+
+    **Physical Interpretation:**
+    - Λ = 0: Pure torsional motion (ω_rel || u)
+    - Λ > 0: Axis tilt / precession / coupling
+
+    Args:
+        positions: Nx3 array (Angstroms)
+        velocities: Nx3 array (Angstroms/ps)
+        forces: Nx3 array (kJ/mol/Angstrom)
+        masses: N-array (amu)
+        torsion_atoms: (a, b, c, d) - indices defining torsion
+        all_bonds: List of (i, j) bond tuples (optional, for networkx splitting)
+
+    Returns:
+        Lambda: Scalar diagnostic (dimensionless after proper scaling)
+    """
+    a, b, c, d = torsion_atoms
+
+    # Extract torsion atom data
+    r_a, r_b, r_c, r_d = positions[[a, b, c, d]]
+    v_a, v_b, v_c, v_d = velocities[[a, b, c, d]]
+    F_a, F_b, F_c, F_d = forces[[a, b, c, d]]
+
+    # 1. Torsion axis
+    bond_vec = r_c - r_b
+    bond_len = np.linalg.norm(bond_vec)
+    if bond_len < 1e-10:
+        return 0.0
+    u = bond_vec / bond_len
+
+    # 2. Identify groups (left and right of bond b-c)
+    if all_bonds is not None and HAS_NETWORKX:
+        try:
+            group_L, group_R = identify_torsion_groups((b, c), all_bonds)
+        except:
+            # Fallback to simple split
+            group_L, group_R = identify_torsion_groups_simple(torsion_atoms, len(positions))
+    else:
+        group_L, group_R = identify_torsion_groups_simple(torsion_atoms, len(positions))
+
+    # 3. Generalized torsional force Q_φ
+    Q_phi = compute_Q_phi(r_a, r_b, r_c, r_d, F_a, F_b, F_c, F_d)
+
+    # 4. Reduced moment of inertia
+    I_red = compute_I_red(positions, masses, u, group_L, group_R, r_b)
+
+    # 5. Angular acceleration scalar
+    if I_red < 1e-10:
+        return 0.0
+    alpha = Q_phi / I_red  # rad/s² (or rad/ps² if forces in appropriate units)
+
+    # 6. Dual vector for B_Q
+    v_Q = alpha * u  # 3D vector representing bivector B_Q
+
+    # 7. Fit group angular velocities
+    omega_L = fit_omega_rigid_body(positions, velocities, masses, group_L)
+    omega_R = fit_omega_rigid_body(positions, velocities, masses, group_R)
+
+    # 8. Relative angular velocity
+    omega_rel = omega_L - omega_R  # 3D vector
+    v_omega = omega_rel  # Dual vector for B_ω
+
+    # 9. Commutator: [B_ω, B_Q] in dual representation
+    cross = np.cross(v_omega, v_Q)
+
+    # 10. Lambda = 2 * |cross product|
+    Lambda = 2.0 * np.linalg.norm(cross)
+
+    return Lambda
+
+
+def compute_Lambda_GA_with_diagnostics(positions, velocities, forces, masses,
+                                        torsion_atoms, all_bonds=None):
+    """
+    Extended version that returns diagnostic information.
+
+    Returns:
+        dict with keys:
+        - 'Lambda': Scalar diagnostic
+        - 'Q_phi': Generalized torsional force
+        - 'I_red': Reduced moment of inertia
+        - 'alpha': Angular acceleration
+        - 'omega_L': Left group angular velocity
+        - 'omega_R': Right group angular velocity
+        - 'omega_rel': Relative angular velocity
+        - 'axis': Torsion axis unit vector
+        - 'axis_tilt': Angle between ω_rel and axis (degrees)
+    """
+    a, b, c, d = torsion_atoms
+
+    r_a, r_b, r_c, r_d = positions[[a, b, c, d]]
+    v_a, v_b, v_c, v_d = velocities[[a, b, c, d]]
+    F_a, F_b, F_c, F_d = forces[[a, b, c, d]]
+
+    # Torsion axis
+    bond_vec = r_c - r_b
+    bond_len = np.linalg.norm(bond_vec)
+    if bond_len < 1e-10:
+        return {'Lambda': 0.0, 'Q_phi': 0.0, 'I_red': 0.0, 'alpha': 0.0,
+                'omega_L': np.zeros(3), 'omega_R': np.zeros(3),
+                'omega_rel': np.zeros(3), 'axis': np.zeros(3), 'axis_tilt': 0.0}
+    u = bond_vec / bond_len
+
+    # Groups
+    if all_bonds is not None and HAS_NETWORKX:
+        try:
+            group_L, group_R = identify_torsion_groups((b, c), all_bonds)
+        except:
+            group_L, group_R = identify_torsion_groups_simple(torsion_atoms, len(positions))
+    else:
+        group_L, group_R = identify_torsion_groups_simple(torsion_atoms, len(positions))
+
+    # Q_phi and I_red
+    Q_phi = compute_Q_phi(r_a, r_b, r_c, r_d, F_a, F_b, F_c, F_d)
+    I_red = compute_I_red(positions, masses, u, group_L, group_R, r_b)
+
+    if I_red < 1e-10:
+        alpha = 0.0
+    else:
+        alpha = Q_phi / I_red
+
+    v_Q = alpha * u
+
+    # Omega
+    omega_L = fit_omega_rigid_body(positions, velocities, masses, group_L)
+    omega_R = fit_omega_rigid_body(positions, velocities, masses, group_R)
+    omega_rel = omega_L - omega_R
+
+    # Lambda
+    cross = np.cross(omega_rel, v_Q)
+    Lambda = 2.0 * np.linalg.norm(cross)
+
+    # Axis tilt angle
+    omega_rel_norm = np.linalg.norm(omega_rel)
+    if omega_rel_norm > 1e-10:
+        cos_theta = np.dot(omega_rel, u) / omega_rel_norm
+        cos_theta = np.clip(cos_theta, -1, 1)
+        axis_tilt = np.degrees(np.arccos(np.abs(cos_theta)))  # 0-90 degrees
+    else:
+        axis_tilt = 0.0
+
+    return {
+        'Lambda': Lambda,
+        'Q_phi': Q_phi,
+        'I_red': I_red,
+        'alpha': alpha,
+        'omega_L': omega_L,
+        'omega_R': omega_R,
+        'omega_rel': omega_rel,
+        'axis': u,
+        'axis_tilt': axis_tilt,
+        'group_L': group_L,
+        'group_R': group_R
+    }
 
 
 # ============================================================================
