@@ -284,12 +284,20 @@ def run_bandit(BanditClass, horizon=500, **kwargs):
         cumulative_regret += regret
         regret_history.append(cumulative_regret)
 
+    # Get final values (different bandits use different attribute names)
+    if hasattr(bandit, 'values'):
+        final_values = bandit.values
+    elif hasattr(bandit, 'mu_estimates'):
+        final_values = bandit.mu_estimates
+    else:
+        final_values = np.zeros(bandit.n_arms)
+
     return {
         'arm_history': arm_history,
         'reward_history': reward_history,
         'regret_history': regret_history,
         'final_counts': bandit.counts,
-        'final_values': bandit.values
+        'final_values': final_values
     }
 
 

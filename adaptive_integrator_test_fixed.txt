@@ -1,0 +1,32 @@
+================================================================================
+ADAPTIVE INTEGRATOR TEST - BUTANE
+================================================================================
+
+Testing Adaptive Integrator:
+--------------------------------------------------------------------------------
+  Extracted 1 unique torsions from PeriodicTorsionForce
+  Total torsional DOFs: 1
+  Using torsion force group 1
+Minimizing energy...
+Initialization complete
+Running 5000 adaptive steps...
+
+================================================================================
+RESULTS
+================================================================================
+
+Steps taken:        5000
+Time elapsed:       8.74 ps
+Base timestep:      2.00 fs
+Average timestep:   1.75 fs
+Min timestep:       1.17 fs
+Max timestep:       2.00 fs
+Speedup:            0.87×
+Energy drift:       72.2089%
+Λ_stiff (mean):     16.08
+Λ_stiff (max):      80.67
+Torsions tracked:   1
+
+❌ NO SPEEDUP
+   Adaptive timestep not beneficial for this system
+

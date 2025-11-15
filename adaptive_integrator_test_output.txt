@@ -1,0 +1,30 @@
+================================================================================
+ADAPTIVE INTEGRATOR TEST - BUTANE
+================================================================================
+
+Testing Adaptive Integrator:
+--------------------------------------------------------------------------------
+Detected 27 torsional degrees of freedom
+Minimizing energy...
+Initialization complete
+Running 5000 adaptive steps...
+
+================================================================================
+RESULTS
+================================================================================
+
+Steps taken:        5000
+Time elapsed:       3.85 ps
+Base timestep:      2.00 fs
+Average timestep:   0.77 fs
+Min timestep:       0.50 fs
+Max timestep:       2.00 fs
+Speedup:            0.38×
+Energy drift:       102.8314%
+Λ_stiff (mean):     47.25
+Λ_stiff (max):      168.46
+Torsions tracked:   27
+
+❌ NO SPEEDUP
+   Adaptive timestep not beneficial for this system
+

@@ -1,0 +1,33 @@
+{
+  "standard_ppo": {
+    "convergence_mean": 26.2,
+    "convergence_std": 3.8678159211627436,
+    "final_reward_mean": 222.5686507936508,
+    "final_reward_std": 17.073189732272198,
+    "lambda_mean": 0.0,
+    "lambda_std": 0.0,
+    "all_convergence": [
+      21,
+      27,
+      32,
+      23,
+      28
+    ]
+  },
+  "lambda_ppo": {
+    "convergence_mean": 23.6,
+    "convergence_std": 1.3564659966250536,
+    "final_reward_mean": 213.98888888888888,
+    "final_reward_std": 10.909187429427108,
+    "lambda_mean": 7.015756938366311e-09,
+    "lambda_std": 6.461707678780167e-10,
+    "all_convergence": [
+      24,
+      22,
+      25,
+      25,
+      22
+    ]
+  },
+  "improvement_pct": 9.9236641221374
+}

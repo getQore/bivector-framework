@@ -1,0 +1,196 @@
+{
+  "baseline": {
+    "convergence_time": 319.54,
+    "convergence_std": 230.9230356634002,
+    "final_regret": 176.87,
+    "regret_std": 111.96297646990277
+  },
+  "best_config": {
+    "c": 5.0,
+    "formula": "bounded",
+    "convergence_time": 62.4,
+    "final_regret": 40.68
+  },
+  "all_results": {
+    "c=0.1_formula=standard": {
+      "convergence_time": 285.53,
+      "convergence_std": 241.95918891416378,
+      "final_regret": 162.895,
+      "regret_std": 154.33590468520276
+    },
+    "c=0.5_formula=standard": {
+      "convergence_time": 269.94,
+      "convergence_std": 241.5273408953943,
+      "final_regret": 144.73,
+      "regret_std": 137.32600664113116
+    },
+    "c=1.0_formula=standard": {
+      "convergence_time": 222.52,
+      "convergence_std": 236.87956771321583,
+      "final_regret": 121.31,
+      "regret_std": 140.40049465724826
+    },
+    "c=2.0_formula=standard": {
+      "convergence_time": 181.92,
+      "convergence_std": 228.4750174526747,
+      "final_regret": 93.86,
+      "regret_std": 123.49289615196496
+    },
+    "c=3.0_formula=standard": {
+      "convergence_time": 128.29,
+      "convergence_std": 203.230573241331,
+      "final_regret": 71.615,
+      "regret_std": 117.99169155071894
+    },
+    "c=5.0_formula=standard": {
+      "convergence_time": 112.44,
+      "convergence_std": 188.02304752343525,
+      "final_regret": 70.73,
+      "regret_std": 107.37128154213303
+    },
+    "c=0.1_formula=inverse": {
+      "convergence_time": 308.5,
+      "convergence_std": 225.75878720439653,
+      "final_regret": 171.83,
+      "regret_std": 107.30084389230124
+    },
+    "c=0.5_formula=inverse": {
+      "convergence_time": 310.53,
+      "convergence_std": 221.58643708494435,
+      "final_regret": 173.86,
+      "regret_std": 107.7414284293651
+    },
+    "c=1.0_formula=inverse": {
+      "convergence_time": 329.31,
+      "convergence_std": 221.0512472256151,
+      "final_regret": 179.99,
+      "regret_std": 108.93153767389866
+    },
+    "c=2.0_formula=inverse": {
+      "convergence_time": 297.95,
+      "convergence_std": 224.74569517568068,
+      "final_regret": 162.375,
+      "regret_std": 113.58262135995982
+    },
+    "c=3.0_formula=inverse": {
+      "convergence_time": 282.09,
+      "convergence_std": 230.80472677135535,
+      "final_regret": 156.095,
+      "regret_std": 116.44289791567367
+    },
+    "c=5.0_formula=inverse": {
+      "convergence_time": 282.95,
+      "convergence_std": 236.1584372831087,
+      "final_regret": 161.645,
+      "regret_std": 131.6844010314054
+    },
+    "c=0.1_formula=linear": {
+      "convergence_time": 254.03,
+      "convergence_std": 241.99080375088633,
+      "final_regret": 150.045,
+      "regret_std": 147.75973901912522
+    },
+    "c=0.5_formula=linear": {
+      "convergence_time": 152.63,
+      "convergence_std": 216.92149063658954,
+      "final_regret": 75.66,
+      "regret_std": 117.34146496443616
+    },
+    "c=1.0_formula=linear": {
+      "convergence_time": 180.84,
+      "convergence_std": 229.15940827293127,
+      "final_regret": 93.255,
+      "regret_std": 128.52835280590816
+    },
+    "c=2.0_formula=linear": {
+      "convergence_time": 147.65,
+      "convergence_std": 214.3510380194134,
+      "final_regret": 72.445,
+      "regret_std": 110.23724177881085
+    },
+    "c=3.0_formula=linear": {
+      "convergence_time": 89.14,
+      "convergence_std": 166.76828355535716,
+      "final_regret": 45.68,
+      "regret_std": 95.09252126218969
+    },
+    "c=5.0_formula=linear": {
+      "convergence_time": 67.09,
+      "convergence_std": 136.6652914971464,
+      "final_regret": 36.0,
+      "regret_std": 83.5050297886301
+    },
+    "c=0.1_formula=bounded": {
+      "convergence_time": 271.25,
+      "convergence_std": 242.92300735006555,
+      "final_regret": 152.72,
+      "regret_std": 143.60493236654514
+    },
+    "c=0.5_formula=bounded": {
+      "convergence_time": 237.89,
+      "convergence_std": 241.93866557456252,
+      "final_regret": 130.175,
+      "regret_std": 142.90002405528136
+    },
+    "c=1.0_formula=bounded": {
+      "convergence_time": 257.13,
+      "convergence_std": 240.86036016746303,
+      "final_regret": 132.55,
+      "regret_std": 133.1973254235985
+    },
+    "c=2.0_formula=bounded": {
+      "convergence_time": 145.63,
+      "convergence_std": 210.9783237681066,
+      "final_regret": 73.25,
+      "regret_std": 114.7296714019525
+    },
+    "c=3.0_formula=bounded": {
+      "convergence_time": 112.51,
+      "convergence_std": 188.221066568012,
+      "final_regret": 61.54,
+      "regret_std": 102.8712953160404
+    },
+    "c=5.0_formula=bounded": {
+      "convergence_time": 62.4,
+      "convergence_std": 130.24630512993448,
+      "final_regret": 40.68,
+      "regret_std": 64.96435638101865
+    },
+    "c=0.1_formula=first_order": {
+      "convergence_time": 271.24,
+      "convergence_std": 239.2330294921669,
+      "final_regret": 155.515,
+      "regret_std": 150.09925807611444
+    },
+    "c=0.5_formula=first_order": {
+      "convergence_time": 224.63,
+      "convergence_std": 236.17149087051132,
+      "final_regret": 117.3,
+      "regret_std": 130.56864095179975
+    },
+    "c=1.0_formula=first_order": {
+      "convergence_time": 193.64,
+      "convergence_std": 228.7065158669512,
+      "final_regret": 106.445,
+      "regret_std": 133.4126660965892
+    },
+    "c=2.0_formula=first_order": {
+      "convergence_time": 208.24,
+      "convergence_std": 230.7823702105514,
+      "final_regret": 109.33,
+      "regret_std": 127.66017820761492
+    },
+    "c=3.0_formula=first_order": {
+      "convergence_time": 230.95,
+      "convergence_std": 234.54903005555147,
+      "final_regret": 118.14,
+      "regret_std": 119.17334181770687
+    },
+    "c=5.0_formula=first_order": {
+      "convergence_time": 152.55,
+      "convergence_std": 201.26670738102712,
+      "final_regret": 83.355,
+      "regret_std": 108.2934969192518
+    }
+  }
+}

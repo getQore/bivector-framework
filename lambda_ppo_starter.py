@@ -379,7 +379,7 @@ if TORCH_AVAILABLE:
         Collect trajectories from environment.
 
         Args:
-            env: Gym environment
+            env: Gymnasium environment
             agent: LambdaPPO agent
             n_steps: Number of steps to collect
 
@@ -393,7 +393,7 @@ if TORCH_AVAILABLE:
         log_probs = []
         logits = []
 
-        state = env.reset()
+        state, _ = env.reset()
         episode_rewards = []
         current_episode_reward = 0
 
@@ -407,7 +407,8 @@ if TORCH_AVAILABLE:
                 logit = agent.policy(state_tensor)
 
             # Step environment
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
 
             # Store
             states.append(state)
@@ -420,7 +421,7 @@ if TORCH_AVAILABLE:
             current_episode_reward += reward
 
             if done:
-                state = env.reset()
+                state, _ = env.reset()
                 episode_rewards.append(current_episode_reward)
                 current_episode_reward = 0
             else:
@@ -445,16 +446,16 @@ def example_cartpole():
     """
     Example: Lambda-PPO on CartPole-v1
 
-    Requires: pip install gym
+    Requires: pip install gymnasium
     """
     if not TORCH_AVAILABLE:
         print("PyTorch not available. Install with: pip install torch")
         return
 
     try:
-        import gym
+        import gymnasium as gym
     except ImportError:
-        print("Gym not available. Install with: pip install gym")
+        print("Gymnasium not available. Install with: pip install gymnasium")
         return
 
     print("="*80)
@@ -539,14 +540,14 @@ def main():
     print("Run example_cartpole() to test on CartPole-v1")
     print()
 
-    # Run example if gym available
+    # Run example if gymnasium available
     try:
-        import gym
+        import gymnasium as gym
         print("Running CartPole example...")
         print()
         example_cartpole()
     except ImportError:
-        print("Gym not installed. Install with: pip install gym")
+        print("Gymnasium not installed. Install with: pip install gymnasium")
         print("Then run: python lambda_ppo_starter.py")
 
 
